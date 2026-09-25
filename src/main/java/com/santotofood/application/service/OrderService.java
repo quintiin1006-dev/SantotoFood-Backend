@@ -14,7 +14,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 public class OrderService implements
@@ -40,15 +43,11 @@ public class OrderService implements
     @Transactional
     public Order prepareOrder(UUID orderId) {
 
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() ->
-                        new IllegalArgumentException(
-                                "El pedido no existe"
-                        )
-                );
+        Order order = findOrder(orderId);
 
         Order firstPendingOrder =
-                orderRepository.findFirstPendingByCafeteriaId(
+                orderRepository
+                        .findFirstPendingByCafeteriaId(
                                 order.getCafeteriaId()
                         )
                         .orElseThrow(() ->
@@ -70,14 +69,10 @@ public class OrderService implements
     }
 
     @Override
+    @Transactional
     public Order markOrderReady(UUID orderId) {
 
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() ->
-                        new IllegalArgumentException(
-                                "El pedido no existe"
-                        )
-                );
+        Order order = findOrder(orderId);
 
         order.markReady();
 
@@ -85,14 +80,10 @@ public class OrderService implements
     }
 
     @Override
+    @Transactional
     public Order callStudent(UUID orderId) {
 
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() ->
-                        new IllegalArgumentException(
-                                "El pedido no existe"
-                        )
-                );
+        Order order = findOrder(orderId);
 
         order.callStudent();
 
@@ -100,14 +91,10 @@ public class OrderService implements
     }
 
     @Override
+    @Transactional
     public Order deliverOrder(UUID orderId) {
 
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() ->
-                        new IllegalArgumentException(
-                                "El pedido no existe"
-                        )
-                );
+        Order order = findOrder(orderId);
 
         order.deliver();
 
@@ -115,14 +102,10 @@ public class OrderService implements
     }
 
     @Override
+    @Transactional
     public Order cancelOrder(UUID orderId) {
 
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() ->
-                        new IllegalArgumentException(
-                                "El pedido no existe"
-                        )
-                );
+        Order order = findOrder(orderId);
 
         order.cancel();
 
@@ -130,21 +113,58 @@ public class OrderService implements
     }
 
     @Override
-    public List<Order> getOrdersByCafeteria(UUID cafeteriaId) {
+    @Transactional(readOnly = true)
+    public List<Order> getOrdersByCafeteria(
+            UUID cafeteriaId
+    ) {
 
         List<Order> orders =
-                orderRepository.findByCafeteriaId(cafeteriaId);
+                orderRepository.findByCafeteriaId(
+                        cafeteriaId
+                );
 
-        orders.forEach(order -> {
+        if (orders.isEmpty()) {
+            return orders;
+        }
 
-            List<OrderItem> items =
-                    orderItemRepository.findByOrderId(
-                            order.getId()
-                    );
+        List<UUID> orderIds =
+                orders.stream()
+                        .map(Order::getId)
+                        .toList();
 
-            order.setItems(items);
-        });
+        List<OrderItem> items =
+                orderItemRepository.findByOrderIds(
+                        orderIds
+                );
+
+        Map<UUID, List<OrderItem>> itemsByOrderId =
+                items.stream()
+                        .collect(
+                                Collectors.groupingBy(
+                                        OrderItem::getOrderId
+                                )
+                        );
+
+        orders.forEach(order ->
+                order.setItems(
+                        itemsByOrderId.getOrDefault(
+                                order.getId(),
+                                List.of()
+                        )
+                )
+        );
 
         return orders;
+    }
+
+    private Order findOrder(UUID orderId) {
+
+        return orderRepository
+                .findById(orderId)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "El pedido no existe"
+                        )
+                );
     }
 }

@@ -1,5 +1,7 @@
 package com.santotofood.adapter.in.web;
 
+import com.santotofood.adapter.in.web.dto.OrderResponse;
+import com.santotofood.adapter.in.web.mapper.OrderResponseMapper;
 import com.santotofood.application.port.in.CallStudentUseCase;
 import com.santotofood.application.port.in.CancelOrderUseCase;
 import com.santotofood.application.port.in.DeliverOrderUseCase;
@@ -8,7 +10,6 @@ import com.santotofood.application.port.in.MarkOrderReadyUseCase;
 import com.santotofood.application.port.in.PrepareOrderUseCase;
 import com.santotofood.domain.model.Order;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,110 +27,95 @@ public class OrderController {
     private final DeliverOrderUseCase deliverOrderUseCase;
     private final CancelOrderUseCase cancelOrderUseCase;
     private final GetOrdersByCafeteriaUseCase getOrdersByCafeteriaUseCase;
-
+    private final OrderResponseMapper orderResponseMapper;
 
     @GetMapping
-    public ResponseEntity<List<Order>> getOrdersByCafeteria(
+    public ResponseEntity<List<OrderResponse>> getOrdersByCafeteria(
             @RequestParam UUID cafeteriaId
     ) {
 
-        List<Order> orders =
+        List<OrderResponse> response =
                 getOrdersByCafeteriaUseCase
-                        .getOrdersByCafeteria(cafeteriaId);
+                        .getOrdersByCafeteria(cafeteriaId)
+                        .stream()
+                        .map(orderResponseMapper::toResponse)
+                        .toList();
 
-        return ResponseEntity.ok(orders);
+        return ResponseEntity.ok(response);
     }
 
-
     @PatchMapping("/{orderId}/prepare")
-    public ResponseEntity<Order> prepareOrder(
+    public ResponseEntity<OrderResponse> prepareOrder(
             @PathVariable UUID orderId
     ) {
 
         Order updatedOrder =
                 prepareOrderUseCase.prepareOrder(orderId);
 
-        return ResponseEntity.ok(updatedOrder);
+        return ResponseEntity.ok(
+                orderResponseMapper.toResponse(
+                        updatedOrder
+                )
+        );
     }
 
-
     @PatchMapping("/{orderId}/ready")
-    public ResponseEntity<Order> markOrderReady(
+    public ResponseEntity<OrderResponse> markOrderReady(
             @PathVariable UUID orderId
     ) {
 
         Order updatedOrder =
                 markOrderReadyUseCase.markOrderReady(orderId);
 
-        return ResponseEntity.ok(updatedOrder);
+        return ResponseEntity.ok(
+                orderResponseMapper.toResponse(
+                        updatedOrder
+                )
+        );
     }
 
-
     @PatchMapping("/{orderId}/call")
-    public ResponseEntity<Order> callStudent(
+    public ResponseEntity<OrderResponse> callStudent(
             @PathVariable UUID orderId
     ) {
 
         Order updatedOrder =
                 callStudentUseCase.callStudent(orderId);
 
-        return ResponseEntity.ok(updatedOrder);
+        return ResponseEntity.ok(
+                orderResponseMapper.toResponse(
+                        updatedOrder
+                )
+        );
     }
 
-
     @PatchMapping("/{orderId}/deliver")
-    public ResponseEntity<Order> deliverOrder(
+    public ResponseEntity<OrderResponse> deliverOrder(
             @PathVariable UUID orderId
     ) {
 
         Order updatedOrder =
                 deliverOrderUseCase.deliverOrder(orderId);
 
-        return ResponseEntity.ok(updatedOrder);
+        return ResponseEntity.ok(
+                orderResponseMapper.toResponse(
+                        updatedOrder
+                )
+        );
     }
 
-
     @PatchMapping("/{orderId}/cancel")
-    public ResponseEntity<Order> cancelOrder(
+    public ResponseEntity<OrderResponse> cancelOrder(
             @PathVariable UUID orderId
     ) {
 
         Order updatedOrder =
                 cancelOrderUseCase.cancelOrder(orderId);
 
-        return ResponseEntity.ok(updatedOrder);
-    }
-
-
-    /**
-     * Errores de reglas de negocio.
-     *
-     * Por ejemplo:
-     * - Intentar preparar un pedido que no tiene prioridad.
-     * - Intentar entregar un pedido que no fue llamado.
-     * - Intentar cambiar un pedido en un estado incorrecto.
-     */
-    @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<String> handleIllegalStateException(
-            IllegalStateException exception
-    ) {
-
-        return ResponseEntity
-                .status(HttpStatus.CONFLICT)
-                .body(exception.getMessage());
-    }
-
-
-    /**
-     * Pedido inexistente.
-     */
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<String> handleIllegalArgumentException(
-            IllegalArgumentException exception
-    ) {
-
-        return ResponseEntity
-                .status(HttpStatus.NOT_FOUND)
-                .body(exception.getMessage());
+        return ResponseEntity.ok(
+                orderResponseMapper.toResponse(
+                        updatedOrder
+                )
+        );
     }
 }

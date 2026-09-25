@@ -8,6 +8,7 @@ import com.santotofood.domain.port.out.OrderItemRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -36,6 +37,22 @@ public class OrderItemPersistenceAdapter
 
         return repository
                 .findByOrderId(orderId)
+                .stream()
+                .map(mapper::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<OrderItem> findByOrderIds(
+            Collection<UUID> orderIds
+    ) {
+
+        if (orderIds == null || orderIds.isEmpty()) {
+            return List.of();
+        }
+
+        return repository
+                .findByOrderIdInOrderByOrderIdAscIdAsc(orderIds)
                 .stream()
                 .map(mapper::toDomain)
                 .toList();
