@@ -102,14 +102,6 @@ public class Order {
             );
         }
 
-        if (cancellationDeadline != null
-                && Instant.now().isAfter(cancellationDeadline)) {
-
-            throw new IllegalStateException(
-                    "El tiempo para cancelar el pedido ha expirado"
-            );
-        }
-
         status = OrderStatus.CANCELLED;
         updatedAt = Instant.now();
     }
